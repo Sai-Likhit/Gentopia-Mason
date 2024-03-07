@@ -3,6 +3,41 @@ from scholarly import scholarly, ProxyGenerator
 from gentopia.tools.basetool import *
 from scholarly import ProxyGenerator
 from itertools import islice
+import PyPDF2
+import requests
+
+class SearchPDFUrl(BaseModel):
+    title: str = Field(..., description="pdf url")
+    top_k: int = Field(..., description="number of results to display. 5 is prefered.")
+
+
+class ReadPDF(BaseTool):
+    name = "read_pdf"
+    description = "Extract URLs from a PDF file located at a URL."
+    args_schema: Optional[Type[BaseModel]] = SearchPDFUrl
+    title: str = ""
+
+    def _run(self, title: str, top_k: int = 1) -> str:
+        response = requests.get(title)
+        with open('/tmp/metadata.pdf', 'wb') as fd:
+            for chunk in response.iter_content(2000):
+                fd.write(chunk)
+        text = ""
+
+        pdf_file = PyPDF2.PdfReader('/tmp/metadata.pdf')
+
+        for i in range(len(pdf_file.pages)):
+            page = pdf_file.pages[0]
+            text += page.extract_text()
+            if len(text) > 9000:
+                 break
+
+        return text.strip()
+
+    async def _arun(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+
 
 
 class SearchAuthorByNameArgs(BaseModel):
